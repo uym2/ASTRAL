@@ -1,6 +1,8 @@
 package phylonet.coalescent;
 
 import java.util.AbstractMap.SimpleEntry;
+import java.io.IOException;
+import java.io.StringReader;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
@@ -8,9 +10,12 @@ import java.util.Set;
 import java.util.Stack;
 
 import phylonet.lca.SchieberVishkinLCA;
+import phylonet.tree.io.NewickReader;
+import phylonet.tree.io.ParseException;
 import phylonet.tree.model.TNode;
 import phylonet.tree.model.Tree;
 import phylonet.tree.model.sti.STINode;
+import phylonet.tree.model.sti.STITree;
 import phylonet.tree.model.sti.STITreeCluster;
 import phylonet.tree.model.sti.STITreeCluster.Vertex;
 
@@ -87,10 +92,10 @@ class DLWeightCalculator extends AbstractWeightCalculatorConsumer<STBipartition>
 		return ret;
 	}
 
-	public void preCalculateWeights(List<Tree> trees, List<Tree> extraTrees) {
+	public void preCalculateWeights(List<Tree> trees, List<String> extraTrees){
 
 		if (inference.isRooted() && GlobalMaps.taxonNameMap == null && GlobalMaps.taxonIdentifier.taxonCount() > trees.size()) {
-			calculateWeightsByLCA(trees, trees);
+			calculateWeightsByLCA_self(trees, trees);
 			if (extraTrees != null) {
 				calculateWeightsByLCA(extraTrees, trees);
 			}
@@ -98,9 +103,73 @@ class DLWeightCalculator extends AbstractWeightCalculatorConsumer<STBipartition>
 
 	}
 
-	void calculateWeightsByLCA(List<Tree> stTrees, List<Tree> gtTrees) {
+	void calculateWeightsByLCA_self(List<Tree> extraTrees, List<Tree> gtTrees){
+		for (Tree stTree : extraTrees) {
+			SchieberVishkinLCA lcaLookup = new SchieberVishkinLCA(stTree);
+			for (Tree gtTree : gtTrees) {
+				Stack<TNode> stack = new Stack<TNode>();
+				for (TNode gtNode : gtTree.postTraverse()) {
+					if (gtNode.isLeaf()) {
+						stack.push(stTree.getNode(gtNode.getName()));
+					} else {
+						TNode rightLCA = stack.pop();
+						TNode leftLCA = stack.pop();
+						// If gene trees are incomplete, we can have this case
+						if (rightLCA == null || leftLCA == null) {
+							stack.push(null);
+							continue;
+						}
+						TNode lca = lcaLookup.getLCA(leftLCA, rightLCA);
+						stack.push(lca);
+						if (lca != leftLCA && lca != rightLCA) {
+							// LCA in stTree dominates gtNode in gene tree
+							// gtTree
+							STBipartition stSTB = (STBipartition) ((STINode) lca)
+									.getData();
+							STBipartition gtSTB = (STBipartition) ((STINode) gtNode)
+									.getData();
+							Set<STBipartition> alreadyProcessedSTBs = dataCollection.alreadyWeigthProcessed
+									.get(gtSTB);
 
-		for (Tree stTree : stTrees) {
+							if (alreadyProcessedSTBs == null) {
+								alreadyProcessedSTBs = new HashSet<STBipartition>();
+								dataCollection.alreadyWeigthProcessed.put(gtSTB,
+										alreadyProcessedSTBs);
+							}
+
+							if (alreadyProcessedSTBs.contains(stSTB)) {
+								continue;
+							}
+							//TODO: this should happen in abstract class?
+							weights.put(
+									stSTB,
+									(weights.containsKey(stSTB) ? weights
+											.get(stSTB) : 0)
+											+ dataCollection.geneTreeSTBCount.get(gtSTB));
+							alreadyProcessedSTBs.add(stSTB);
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	
+	
+	void calculateWeightsByLCA(List<String> extraTrees, List<Tree> gtTrees){
+
+		for (String str : extraTrees) {
+			NewickReader nr = new NewickReader(new StringReader(str));
+			STITree<Double> stTree = new STITree<Double>(true);
+			try {
+				nr.readTree(stTree);
+			} catch (IOException | ParseException e) {
+				System.err.println("calculateWeightsByLCA: Error when reading extra trees.");
+				System.err.println(e.getMessage());
+				e.printStackTrace();
+				System.exit(1);
+			}
+			
 			SchieberVishkinLCA lcaLookup = new SchieberVishkinLCA(stTree);
 			for (Tree gtTree : gtTrees) {
 				Stack<TNode> stack = new Stack<TNode>();

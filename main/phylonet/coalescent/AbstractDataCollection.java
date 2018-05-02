@@ -1,7 +1,9 @@
 package phylonet.coalescent;
 
+import java.io.IOException;
 import java.util.List;
 
+import phylonet.tree.io.ParseException;
 import phylonet.tree.model.Tree;
 import phylonet.tree.model.sti.STITreeCluster;
 import phylonet.tree.model.sti.STITreeCluster.Vertex;
@@ -59,7 +61,7 @@ public abstract class AbstractDataCollection <T> {
 	}
 
 	public abstract void addExtraBipartitionsByInput(
-			List<Tree> trees, boolean extraTreeRooted);
+			List<String> extraTrees, boolean extraTreeRooted) throws IOException, ParseException;
 	
 	//public abstract void computeTreePartitions(AbstractInference<T> inference);
 

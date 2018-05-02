@@ -345,7 +345,7 @@ class BipartitionWeightCalculator extends AbstractWeightCalculatorConsumer<Tripa
 
 
 	@Override
-	public void preCalculateWeights(List<Tree> trees, List<Tree> extraTrees) {
+	public void preCalculateWeights(List<Tree> trees, List<String> extraTrees) {
 		// TODO Auto-generated method stub
 
 	}

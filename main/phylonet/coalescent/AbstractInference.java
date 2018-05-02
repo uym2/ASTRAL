@@ -1,5 +1,6 @@
 package phylonet.coalescent;
 
+import java.io.IOException;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
@@ -11,6 +12,7 @@ import java.util.Stack;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import phylonet.coalescent.IClusterCollection.VertexPair;
+import phylonet.tree.io.ParseException;
 import phylonet.tree.model.MutableTree;
 import phylonet.tree.model.TNode;
 import phylonet.tree.model.Tree;
@@ -30,7 +32,7 @@ import phylonet.tree.util.Collapse;
 public abstract class AbstractInference<T> implements Cloneable{
 	
 	protected List<Tree> trees;
-	protected List<Tree> extraTrees = null;
+	protected List<String> extraTrees = null;
 
 
 	Collapse.CollapseDescriptor cd = null;
@@ -49,11 +51,11 @@ public abstract class AbstractInference<T> implements Cloneable{
 	
 
 	public AbstractInference(Options options, List<Tree> trees,
-			List<Tree> extraTrees) {
+			List<String> extraTrees2) {
 		super();
 		this.options = options;
 		this.trees = trees;
-		this.extraTrees = extraTrees;
+		this.extraTrees = extraTrees2;
 		
 		this.initDF();
 		
@@ -287,8 +289,10 @@ public abstract class AbstractInference<T> implements Cloneable{
 	
 	/**
 	 * Sets up data structures before starting DP
+	 * @throws ParseException 
+	 * @throws IOException 
 	 */
-	void setup() {
+	void setup() throws IOException, ParseException {
 		this.setupSearchSpace();
 		this.initializeWeightCalculator();
 		this.setupMisc();
@@ -296,8 +300,10 @@ public abstract class AbstractInference<T> implements Cloneable{
 	
 	/***
 	 * Creates the set X 
+	 * @throws ParseException 
+	 * @throws IOException 
 	 */
-	private void setupSearchSpace() {
+	private void setupSearchSpace() throws IOException, ParseException {
 		long startTime = System.currentTimeMillis();
 
 		mapNames();

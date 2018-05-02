@@ -54,7 +54,7 @@ import com.martiansoftware.jsap.Switch;
 import com.martiansoftware.jsap.stringparsers.FileStringParser;
 
 public class CommandLine {
-	protected static String _version = "5.12.6a";
+	protected static String _version = "5.12.7beta";
 
 	protected static SimpleJSAP jsap;
 
@@ -738,7 +738,7 @@ public class CommandLine {
 		System.err.println("Scoring: " + toScore.size() + " trees");
 
 		AbstractInference inference = initializeInference(criterion, mainTrees,
-				new ArrayList<Tree>(), options);
+				new ArrayList<String>(), options);
 		double score = Double.NEGATIVE_INFINITY;
 		List<Tree> bestTree = new ArrayList<Tree>();
 		for (String trs : toScore) {
@@ -784,13 +784,21 @@ public class CommandLine {
 			boolean rooted, boolean extrarooted, List<Tree> mainTrees,
 			BufferedWriter outbuffer, List<List<String>> bootstrapInputSets,
 			Options options, String outgroup) throws JSAPException,
-			IOException, FileNotFoundException {
+			IOException, FileNotFoundException, ParseException {
 
 		System.err.println("All output trees will be *arbitrarily* rooted at "
 				+ outgroup);
-		List<Tree> extraTrees = new ArrayList<Tree>();
-
-		try {
+		//List<Tree> extraTrees = new ArrayList<Tree>();
+		List<String> extraTrees = new ArrayList<String>();
+		
+		if (config.getFile("extra trees") != null) {
+			extraTrees = readTreeFileAsString(config.getFile("extra trees"));
+			System.err.println(extraTrees.size()
+					+ " extra trees read from "
+					+ config.getFile("extra trees"));
+		}
+		
+		/*try {
 
 			if (config.getFile("extra trees") != null) {
 				readInputTrees(extraTrees,
@@ -816,7 +824,7 @@ public class CommandLine {
 			System.err.println(e.getMessage());
 			e.printStackTrace();
 			System.exit(1);
-		}
+		} */
 
 		int j = 0;
 		List<Tree> bootstraps = new ArrayList<Tree>();
@@ -849,9 +857,9 @@ public class CommandLine {
 		outbuffer.close();
 	}
 
-	private static Tree runOnOneInput(int criterion, List<Tree> extraTrees,
+	private static Tree runOnOneInput(int criterion, List<String> extraTrees,
 			BufferedWriter outbuffer, List<Tree> input,
-			Iterable<Tree> bootstraps, String outgroup, Options options) {
+			Iterable<Tree> bootstraps, String outgroup, Options options) throws IOException, ParseException {
 		long startTime;
 		startTime = System.currentTimeMillis();
 
@@ -912,7 +920,7 @@ public class CommandLine {
 	}
 
 	private static AbstractInference initializeInference(int criterion,
-			List<Tree> trees, List<Tree> extraTrees, Options options) {
+			List<Tree> trees, List<String> extraTrees, Options options) {
 		AbstractInference inference;
 		if (criterion == 1 || criterion == 0) {
 			inference = new DLInference(options, trees, extraTrees);

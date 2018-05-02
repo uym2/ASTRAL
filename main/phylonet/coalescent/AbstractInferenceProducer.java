@@ -15,7 +15,7 @@ public abstract class AbstractInferenceProducer<T> extends AbstractInference<T> 
 	public int weightCount = 0;
 	
 	public AbstractInferenceProducer(Options options, List<Tree> trees,
-			List<Tree> extraTrees) {
+			List<String> extraTrees) {
 		super(options, trees, extraTrees);
 	}
 	

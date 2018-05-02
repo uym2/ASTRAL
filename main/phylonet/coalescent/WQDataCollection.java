@@ -3,6 +3,7 @@ package phylonet.coalescent;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -22,6 +23,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 import phylonet.lca.SchieberVishkinLCA;
+import phylonet.tree.io.NewickReader;
+import phylonet.tree.io.ParseException;
 import phylonet.tree.model.MutableTree;
 import phylonet.tree.model.TMutableNode;
 import phylonet.tree.model.TNode;
@@ -389,13 +392,17 @@ implements Cloneable {
 
 	/**
 	 * Adds extra bipartitions added by user using the option -e and -f
+	 * @throws ParseException 
+	 * @throws IOException 
 	 */
-	public void addExtraBipartitionsByInput(List<Tree> extraTrees,
-			boolean extraTreeRooted) {
+	public void addExtraBipartitionsByInput(List<String> extraTrees,
+			boolean extraTreeRooted) throws IOException, ParseException {
 
 		// List<Tree> completedExtraGeeneTrees = new ArrayList<Tree>();
 		ArrayList<Future> res = new ArrayList();
-		for (Tree tr : extraTrees) {
+		for (String str : extraTrees) {
+			NewickReader nr = new NewickReader(new StringReader(str));
+			MutableTree tr = nr.readTree();
 			res.add(Threading.submit(new addExtraBipartitionByInputLoop(tr)));
 		}
 		

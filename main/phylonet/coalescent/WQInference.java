@@ -32,7 +32,7 @@ public class WQInference extends AbstractInference<Tripartition> {
 	int forceAlg = -1;
 	long maxpossible;
 
-	public WQInference(Options inOptions, List<Tree> trees, List<Tree> extraTrees) {
+	public WQInference(Options inOptions, List<Tree> trees, List<String> extraTrees) {
 		super(inOptions, trees, extraTrees);
 		this.setQueueWeightResults(new LinkedBlockingQueue<Long>());
 		this.setQueueClusterResolutions(new LinkedBlockingQueue<Iterable<VertexPair>>());

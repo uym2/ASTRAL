@@ -421,7 +421,7 @@ class WQWeightCalculator extends AbstractWeightCalculatorConsumer<Tripartition> 
 	/**
 	 * obsolete (for now)
 	 */
-	public void preCalculateWeights(List<Tree> trees, List<Tree> extraTrees) {
+	public void preCalculateWeights(List<Tree> trees, List<String> extraTrees) {
 	}
 
 	/**

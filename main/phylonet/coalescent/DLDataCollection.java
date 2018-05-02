@@ -1,5 +1,7 @@
 package phylonet.coalescent;
 
+import java.io.IOException;
+import java.io.StringReader;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -8,9 +10,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import phylonet.tree.io.NewickReader;
+import phylonet.tree.io.ParseException;
 import phylonet.tree.model.TNode;
 import phylonet.tree.model.Tree;
 import phylonet.tree.model.sti.STINode;
+import phylonet.tree.model.sti.STITree;
 import phylonet.tree.model.sti.STITreeCluster;
 import phylonet.util.BitSet;
 
@@ -204,13 +209,16 @@ public class DLDataCollection extends AbstractDataCollection<STBipartition>{
 
 
 	public void addExtraBipartitionsByInput(
-			List<Tree> trees, boolean extraTreeRooted) {
+			List<String> trees, boolean extraTreeRooted) throws IOException, ParseException {
 
 		int n = GlobalMaps.taxonIdentifier.taxonCount();
 
 		// STITreeCluster all = extraClusters.getTopVertex().getCluster();
 
-		for (Tree tr : trees) {
+		for (String str : trees) {
+			NewickReader nr = new NewickReader(new StringReader(str));
+			STITree<Double> tr = new STITree<Double>(true);
+			nr.readTree(tr);
 
 			/*
 			 * String[] treeLeaves = tr.getLeaves(); STITreeCluster treeAll =

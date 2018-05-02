@@ -36,7 +36,7 @@ public abstract class AbstractWeightCalculator<T> {
 
 	protected abstract Long[] calculateWeight(T[] t);
 
-	public abstract void preCalculateWeights(List<Tree> trees, List<Tree> extraTrees);
+	public abstract void preCalculateWeights(List<Tree> trees, List<String> extraTrees);
 
 	public abstract  Long getWeight(T t);
 }
