@@ -344,53 +344,6 @@ implements Cloneable {
 	}
 
 	/**
-	 * Given a bitset that shows one side of a bipartition this method adds the
-	 * bipartition to the set X. Importantly, when the input bitset has only one
-	 * (or a sbuset) of individuals belonging to a species set, the other
-	 * individuals from that species are also set to one before adding the
-	 * bipartition to the set X. Thus, all individuals from the same species
-	 * will be on the same side of the bipartition. These additions are done on
-	 * a copy of the input bitset not the instance passed in.
-	 * 
-	 * @param stBitSet
-	 * @return was the cluster new?
-	 */
-	// private boolean addSingleIndividualBitSetToX(final BitSet bs) {
-	// STITreeCluster cluster = GlobalMaps.taxonIdentifier.newCluster();
-	// cluster.setCluster(bs);
-	// return this.addSingleIndividualBipartitionToX(cluster);
-	// }
-	private boolean addSpeciesBitSetToX(final BitSet stBitSet) {
-		STITreeCluster cluster = GlobalMaps.taxonNameMap.getSpeciesIdMapper()
-				.getSTTaxonIdentifier().newCluster();
-		// BitSet sBS = GlobalMaps.taxonNameMap.getSpeciesIdMapper()
-		// .getGeneBisetForSTBitset(bs);
-		// cluster.setCluster(sBS);
-		cluster.setCluster(stBitSet);
-		return this.addSpeciesBipartitionToX(cluster);
-	}
-
-	/**
-	 * Adds bipartitions to X. When only one individual from each species is
-	 * sampled, this method adds other individuals from that species to the
-	 * cluster as well, but note that these additions are done on a copy of c1
-	 * not c1 itself.
-	 */
-	private boolean addSpeciesBipartitionToX(final STITreeCluster stCluster) {
-		boolean added = false;
-
-		STITreeCluster c1GT = GlobalMaps.taxonNameMap.getSpeciesIdMapper()
-				.getGeneClusterForSTCluster(stCluster);
-
-		added |= this.addCompletedSpeciesFixedBipartionToX(c1GT,
-				c1GT.complementaryCluster());
-
-		// if (added) { System.err.print(".");}
-
-		return added;
-	}
-
-	/**
 	 * Adds extra bipartitions added by user using the option -e and -f
 	 * @throws ParseException 
 	 * @throws IOException 
@@ -400,11 +353,28 @@ implements Cloneable {
 
 		// List<Tree> completedExtraGeeneTrees = new ArrayList<Tree>();
 		ArrayList<Future> res = new ArrayList();
-		for (String str : extraTrees) {
+	
+		int nchunks = Threading.getNumThreads();
+		int chunksize = (int) Math.ceil(extraTrees.size()/(nchunks+0.0));
+		
+		int countdown = chunksize;
+		ArrayList<String> chunk = new ArrayList();
+		
+		for ( String str : extraTrees) {
+			chunk.add(str);
+			countdown --;
+			if (countdown == 0) {
+				res.add(Threading.submit(new addExtraBipartitionByInputLoop(chunk)));
+				chunk = new ArrayList();
+				countdown = chunksize;
+			}
+		}
+		
+		/*for (String str : extraTrees) {
 			NewickReader nr = new NewickReader(new StringReader(str));
 			MutableTree tr = nr.readTree();
 			res.add(Threading.submit(new addExtraBipartitionByInputLoop(tr)));
-		}
+		}*/
 		
 		for (Future f : res)
 			try {
@@ -416,34 +386,85 @@ implements Cloneable {
 	
 	public class addExtraBipartitionByInputLoop implements Callable<Boolean> {
 		
-		public addExtraBipartitionByInputLoop(Tree tr) {
+		private ArrayList<String> trees;
+
+		public addExtraBipartitionByInputLoop(ArrayList<String> extraTrees) {
 			super();
-			this.tr = tr;
+			this.trees = extraTrees;
 		}
 
 		Tree tr;
 
 		@Override
 		public Boolean call() throws Exception {
-			String[] gtLeaves = tr.getLeaves();
-			STITreeCluster gtAll = GlobalMaps.taxonIdentifier.newCluster();
-			for (int i = 0; i < gtLeaves.length; i++) {
-				gtAll.addLeaf(GlobalMaps.taxonIdentifier.taxonId(gtLeaves[i]));
-			}
-			Tree trc = getCompleteTree(tr, gtAll.getBitSet());
-
-			STITree stTrc = new STITree(trc);
-			GlobalMaps.taxonNameMap.getSpeciesIdMapper().gtToSt((MutableTree) stTrc);
-			if (hasPolytomy(stTrc)) {
-				throw new RuntimeException(
-						"Extra tree shouldn't have polytomy ");
-			}
-			ArrayList<Tree> st = new ArrayList<Tree>();
-			st.add(stTrc);
-			addBipartitionsFromSignleIndTreesToX(stTrc,st, GlobalMaps.taxonNameMap.getSpeciesIdMapper().getSTTaxonIdentifier());
-			return Boolean.TRUE;
-		}
+			
+			for (String str: this.trees) {
+				NewickReader nr = new NewickReader(new StringReader(str));
+				MutableTree tr = nr.readTree();			
+			
+				String[] gtLeaves = tr.getLeaves();
+				STITreeCluster gtAll = GlobalMaps.taxonIdentifier.newCluster();
+				for (int i = 0; i < gtLeaves.length; i++) {
+					gtAll.addLeaf(GlobalMaps.taxonIdentifier.taxonId(gtLeaves[i]));
+				}
+				Tree trc = getCompleteTree(tr, gtAll.getBitSet());
+	
+				STITree<Tree> stTrc = new STITree(trc);
+				GlobalMaps.taxonNameMap.getSpeciesIdMapper().gtToSt((MutableTree) stTrc);
+				
+				if (hasPolytomy(stTrc)) {
+					throw new RuntimeException(
+							"Extra tree shouldn't have polytomy ");
+				}
+											
+				Stack<STITreeCluster> stack = new Stack<STITreeCluster>();
+				 
+				for (TNode node : stTrc.postTraverse()) {
+					if (node.isLeaf()) {
+						STITreeCluster cluster = GlobalMaps.taxonNameMap
+								.getSpeciesIdMapper().getSTTaxonIdentifier()
+								.getClusterForNodeName(node.getName());
+						stack.add(cluster);
+						addSpeciesBipartitionToX(cluster);
+					
+					} else {
+						ArrayList<BitSet> childbslist = new ArrayList<BitSet>();
 		
+						BitSet bs = new BitSet(GlobalMaps.taxonNameMap
+								.getSpeciesIdMapper().getSTTaxonIdentifier()
+								.taxonCount());
+						for (TNode child : node.getChildren()) {
+							STITreeCluster pop = stack.pop();
+							childbslist.add(pop.getBitSet());
+							bs.or(pop.getBitSet());
+						}
+		
+						STITreeCluster cluster = GlobalMaps.taxonNameMap
+								.getSpeciesIdMapper().getSTTaxonIdentifier()
+								.newCluster();
+						cluster.setCluster(bs);
+						stack.add(cluster);
+		
+						// boolean bug = false;
+						try {
+							if (addSpeciesBipartitionToX(cluster)) {
+								
+							}
+						} catch (Exception e) {
+							// bug = true;
+							// System.err.println("node : "+node.toString());
+							// System.err.println("cluster : "+cluster);
+							// System.err.println(childbslist.size());
+							// System.err.println(childbslist);
+							// System.err.println("bs : "+bs);
+							e.printStackTrace();
+						}
+					}
+				}
+			}
+			return Boolean.TRUE;	
+		
+		}
 	}
 
 	public boolean hasPolytomy(Tree tr) {
@@ -480,6 +501,52 @@ implements Cloneable {
 		return added;
 	}
 
+	/**
+	 * Adds bipartitions to X. When only one individual from each species is
+	 * sampled, this method adds other individuals from that species to the
+	 * cluster as well, but note that these additions are done on a copy of c1
+	 * not c1 itself.
+	 */
+	private boolean addSpeciesBipartitionToX(final STITreeCluster stCluster) {
+		boolean added = false;
+
+		STITreeCluster c1GT = GlobalMaps.taxonNameMap.getSpeciesIdMapper()
+				.getGeneClusterForSTCluster(stCluster);
+
+		added |= this.addCompletedSpeciesFixedBipartionToX(c1GT,
+				c1GT.complementaryCluster());
+
+		// if (added) { System.err.print(".");}
+
+		return added;
+	}
+	
+	/**
+	 * Given a bitset that shows one side of a bipartition this method adds the
+	 * bipartition to the set X. Importantly, when the input bitset has only one
+	 * (or a sbuset) of individuals belonging to a species set, the other
+	 * individuals from that species are also set to one before adding the
+	 * bipartition to the set X. Thus, all individuals from the same species
+	 * will be on the same side of the bipartition. These additions are done on
+	 * a copy of the input bitset not the instance passed in.
+	 * 
+	 * @param stBitSet
+	 * @return was the cluster new?
+	 */
+	// private boolean addSingleIndividualBitSetToX(final BitSet bs) {
+	// STITreeCluster cluster = GlobalMaps.taxonIdentifier.newCluster();
+	// cluster.setCluster(bs);
+	// return this.addSingleIndividualBipartitionToX(cluster);
+	// }
+	private boolean addSpeciesBitSetToX(final BitSet stBitSet) {
+		STITreeCluster cluster = GlobalMaps.taxonNameMap.getSpeciesIdMapper()
+				.getSTTaxonIdentifier().newCluster();
+		// BitSet sBS = GlobalMaps.taxonNameMap.getSpeciesIdMapper()
+		// .getGeneBisetForSTBitset(bs);
+		// cluster.setCluster(sBS);
+		cluster.setCluster(stBitSet);
+		return this.addSpeciesBipartitionToX(cluster);
+	}
 	// /***
 	// * Computes and adds partitions from the input set (ASTRAL-I)
 	// * Also, adds extra bipartitions using ASTRAL-II heuristics.

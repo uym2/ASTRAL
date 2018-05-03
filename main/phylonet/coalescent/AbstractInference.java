@@ -314,8 +314,7 @@ public abstract class AbstractInference<T> implements Cloneable{
 		/**
 		 * Forms the set X by adding from gene trees and
 		 * by adding using ASTRAL-II hueristics
-		 */
-		dataCollection.formSetX(this); //TODO: is this necessary. 
+		 */ 
 
 		
 		if (options.isExactSolution()) {
@@ -323,7 +322,7 @@ public abstract class AbstractInference<T> implements Cloneable{
 		    dataCollection.addAllPossibleSubClusters(this.dataCollection.clusters.getTopVertex().getCluster());
 		}
 
-	      
+	    /* For testing of the extraTrees, make it go first for now */  
 		if (extraTrees != null && extraTrees.size() > 0) {		
 	        System.err.println("calculating extra bipartitions from extra input trees ...");
 			dataCollection.addExtraBipartitionsByInput(extraTrees,options.isExtrarooted());
@@ -334,6 +333,8 @@ public abstract class AbstractInference<T> implements Cloneable{
 			System.err.println("Number of Clusters after additions from extra trees: "
 					+ s);
 		}
+		
+		dataCollection.formSetX(this); //TODO: is this necessary.
 		
 		if (this.options.isOutputSearchSpace()) {
 			for (Set<Vertex> s: dataCollection.clusters.getSubClusters()) {

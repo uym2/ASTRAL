@@ -788,9 +788,11 @@ public class CommandLine {
 
 		System.err.println("All output trees will be *arbitrarily* rooted at "
 				+ outgroup);
-		//List<Tree> extraTrees = new ArrayList<Tree>();
+		
 		List<String> extraTrees = new ArrayList<String>();
 		
+		
+		/* Only allow -e for now */
 		if (config.getFile("extra trees") != null) {
 			extraTrees = readTreeFileAsString(config.getFile("extra trees"));
 			System.err.println(extraTrees.size()
@@ -811,8 +813,7 @@ public class CommandLine {
 
 			if (config.getFile("extra species trees") != null) {
 				readInputTrees(extraTrees,
-						readTreeFileAsString(config
-								.getFile("extra species trees")), extrarooted,
+						readTreeFileAsString(config.getFile("extra species trees")), extrarooted,
 						true, true, null, 1, null);
 				System.err.println(extraTrees.size()
 						+ " extra trees read from "
